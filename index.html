@@ -1,57 +1,258 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ATH-THABARI SMART CARD</title>
-  <script src="https://unpkg.com/html5-qrcode"></script>
-  <style>
-    body {
-      font-family: Arial;
-      background: #eef4fa;
-      text-align: center;
-      padding: 15px;
-    }
-    .card {
-      background: white;
-      padding: 20px;
-      border-radius: 15px;
-      max-width: 450px;
-      margin: auto;
-    }
-    h2 { color: #0876c9; }
-    #reader { width: 100%; margin-top: 20px; }
-    #hasil {
-      font-size: 22px;
-      font-weight: bold;
-      color: green;
-      margin-top: 20px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ATH-THABARI SMART CARD</title>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<style>
+body {
+  font-family: Arial;
+  background: #eaf3f7;
+  margin: 0;
+  padding: 15px;
+}
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 15px;
+  max-width: 450px;
+  margin: auto;
+}
+h2 {
+  color: #0876a8;
+  text-align: center;
+}
+input, button {
+  width: 100%;
+  padding: 13px;
+  margin: 7px 0;
+  box-sizing: border-box;
+  border-radius: 8px;
+  font-size: 16px;
+}
+input {
+  border: 1px solid #ccc;
+}
+button {
+  background: #0876a8;
+  color: white;
+  border: none;
+  font-weight: bold;
+}
+#hasil {
+  margin-top: 15px;
+  padding: 12px;
+  background: #f0f7fa;
+  border-radius: 8px;
+}
+#saldo {
+  font-size: 25px;
+  color: green;
+  font-weight: bold;
+}
+</style>
 </head>
-<body>
-  <div class="card">
-    <h2>ATH-THABARI<br>SMART CARD</h2>
-    <p>PEMINDAIAN QR SANTRI</p>
-    <div id="reader"></div>
-    <div id="hasil">Arahkan QR santri ke kamera.</div>
-  </div>
 
-  <script>
-    function berhasil(kode) {
-      document.getElementById("hasil").innerText =
-        "QR TERBACA: " + kode;
+<body>
+<div class="card">
+
+<h2>ATH-THABARI<br>SMART CARD</h2>
+<p style="text-align:center">SISTEM KEUANGAN SANTRI</p>
+
+<label>PIN PETUGAS</label>
+<input type="password" id="pin" placeholder="Masukkan PIN petugas">
+
+<div id="reader"></div>
+
+<div id="hasil">
+  Arahkan QR santri ke kamera.
+</div>
+
+<div id="transaksi" style="display:none">
+
+  <h3>TRANSAKSI KANTIN</h3>
+
+  <label>Nama Barang</label>
+  <input id="barang" placeholder="Contoh: Nasi goreng">
+
+  <label>Nominal Belanja</label>
+  <input id="nominal" type="number" placeholder="Contoh: 5000">
+
+  <label>Nama Petugas</label>
+  <input id="petugas" placeholder="Nama petugas">
+
+  <button onclick="bayar()">PROSES PEMBAYARAN</button>
+
+</div>
+
+<button onclick="resetScan()">PINDAI SANTRI BERIKUTNYA</button>
+
+</div>
+
+<script>
+
+const API_URL =
+"https://ath-thabari-api.idanhifdzan.workers.dev/";
+
+let santri = null;
+let sedangProses = false;
+
+function rupiah(angka) {
+  return "Rp " + Number(angka).toLocaleString("id-ID");
+}
+
+async function cariSantri(kodeQR) {
+
+  if (sedangProses) return;
+
+  sedangProses = true;
+
+  const pin = document.getElementById("pin").value;
+
+  if (!pin) {
+    document.getElementById("hasil").innerHTML =
+      "Masukkan PIN petugas terlebih dahulu.";
+    sedangProses = false;
+    return;
+  }
+
+  document.getElementById("hasil").innerHTML =
+    "Sedang mencari data santri...";
+
+  try {
+
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "cariSantri",
+        kodeQR: kodeQR,
+        pin: pin
+      })
+    });
+
+    const hasil = await response.json();
+
+    if (!hasil.berhasil) {
+      throw new Error(hasil.pesan);
     }
 
-    const scanner = new Html5QrcodeScanner(
-      "reader",
-      {
-        fps: 10,
-        qrbox: { width: 250, height: 250 }
-      },
-      false
-    );
+    santri = hasil.data;
 
-    scanner.render(berhasil);
-  </script>
+    document.getElementById("hasil").innerHTML = `
+      <h3>DATA SANTRI</h3>
+      NIS: ${santri.nis}<br>
+      Nama: ${santri.nama}<br>
+      Kelas: ${santri.kelas}<br><br>
+      SALDO:<br>
+      <span id="saldo">${rupiah(santri.saldo)}</span>
+    `;
+
+    document.getElementById("transaksi").style.display = "block";
+
+  } catch (error) {
+
+    document.getElementById("hasil").innerHTML =
+      "Gagal: " + error.message;
+
+    sedangProses = false;
+  }
+}
+
+async function bayar() {
+
+  if (!santri) return;
+
+  const pin = document.getElementById("pin").value;
+  const barang = document.getElementById("barang").value;
+  const nominal = Number(document.getElementById("nominal").value);
+  const petugas = document.getElementById("petugas").value;
+
+  if (!barang || !nominal || !petugas) {
+    alert("Lengkapi semua data transaksi.");
+    return;
+  }
+
+  if (nominal <= 0 || nominal > santri.saldo) {
+    alert("Nominal tidak valid atau saldo tidak cukup.");
+    return;
+  }
+
+  document.getElementById("hasil").innerHTML =
+    "Sedang memproses pembayaran...";
+
+  try {
+
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "bayarSantri",
+        nis: santri.nis,
+        barang: barang,
+        nominal: nominal,
+        petugas: petugas,
+        pin: pin
+      })
+    });
+
+    const hasil = await response.json();
+
+    if (!hasil.berhasil) {
+      throw new Error(hasil.pesan);
+    }
+
+    santri.saldo = hasil.data.saldo;
+
+    document.getElementById("hasil").innerHTML = `
+      <h3>PEMBAYARAN BERHASIL</h3>
+      Nama: ${hasil.data.nama}<br>
+      Sisa saldo:<br>
+      <span id="saldo">${rupiah(hasil.data.saldo)}</span>
+    `;
+
+    document.getElementById("barang").value = "";
+    document.getElementById("nominal").value = "";
+
+  } catch (error) {
+
+    document.getElementById("hasil").innerHTML =
+      "Transaksi gagal: " + error.message;
+  }
+}
+
+function resetScan() {
+  santri = null;
+  sedangProses = false;
+
+  document.getElementById("hasil").innerHTML =
+    "Silakan pindai QR santri berikutnya.";
+
+  document.getElementById("transaksi").style.display = "none";
+  document.getElementById("barang").value = "";
+  document.getElementById("nominal").value = "";
+}
+
+const scanner = new Html5QrcodeScanner(
+  "reader",
+  {
+    fps: 10,
+    qrbox: { width: 250, height: 250 }
+  },
+  false
+);
+
+scanner.render((kodeQR) => {
+  cariSantri(kodeQR);
+});
+
+</script>
 </body>
 </html>
