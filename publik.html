@@ -23,9 +23,26 @@ nav a{color:white;text-decoration:none;margin:7px;font-size:14px;display:inline-
 footer{background:#064653;color:white;text-align:center;padding:25px;margin-top:30px}
 .btn{display:inline-block;background:#087e91;color:white;padding:12px 20px;border-radius:8px;text-decoration:none;margin-top:10px}
 
-.berita-card{background:white;border-radius:12px;padding:18px;margin:18px 0;box-shadow:0 2px 8px #00000012;overflow:hidden}
+.berita-card{
+background:white;
+border-radius:12px;
+padding:18px;
+margin:18px 0;
+box-shadow:0 2px 8px #00000012;
+overflow:hidden
+}
 .berita-card h3{color:#075e70;margin:10px 0}
-.berita-foto{width:100%;max-height:420px;object-fit:cover;border-radius:9px;margin-bottom:12px}
+.berita-foto{
+display:block;
+width:100%;
+height:auto;
+max-height:600px;
+object-fit:contain;
+object-position:center;
+border-radius:9px;
+margin:0 auto 15px;
+background:#f4f8f8
+}
 .berita-meta{font-size:12px;color:#607d8b;margin-bottom:10px}
 .berita-isi{font-size:15px;line-height:1.8;white-space:pre-line;overflow-wrap:anywhere}
 .status-berita{color:#607d8b;text-align:center;padding:20px}
@@ -128,12 +145,26 @@ window.tampilkanKontenPublik = function(data) {
     if (item.foto) {
       try {
         const alamatFoto = new URL(item.foto);
+
         if (alamatFoto.protocol === "https:") {
           const gambar = document.createElement("img");
           gambar.className = "berita-foto";
-          gambar.src = alamatFoto.href;
           gambar.alt = item.judul || "Foto kegiatan Ma’had";
           gambar.loading = "lazy";
+
+          const idFoto = alamatFoto.searchParams.get("id");
+
+          if (alamatFoto.hostname.includes("drive.google.com") && idFoto) {
+            gambar.src = "https://drive.google.com/thumbnail?id=" +
+              encodeURIComponent(idFoto) + "&sz=w1600";
+          } else {
+            gambar.src = alamatFoto.href;
+          }
+
+          gambar.onerror = function() {
+            gambar.style.display = "none";
+          };
+
           kartu.appendChild(gambar);
         }
       } catch (e) {
