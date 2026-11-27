@@ -5,6 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ma’had Imam Ath-Thabari</title>
+
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#f4f8f8;color:#263238}
@@ -12,7 +13,7 @@ header{background:#075e70;color:white;padding:24px 18px;text-align:center}
 header h1{margin:0 0 10px;font-size:27px}
 header p{margin:0;font-size:14px}
 nav{background:#064653;padding:12px;text-align:center}
-nav a{color:white;text-decoration:none;margin:7px;font-size:14px}
+nav a{color:white;text-decoration:none;margin:7px;font-size:14px;display:inline-block}
 .hero{padding:55px 20px;text-align:center;background:#dceff0}
 .hero h2{font-size:28px;color:#075e70}
 .hero p{line-height:1.7}
@@ -21,8 +22,17 @@ nav a{color:white;text-decoration:none;margin:7px;font-size:14px}
 .card h3{color:#075e70;margin-top:0}
 footer{background:#064653;color:white;text-align:center;padding:25px;margin-top:30px}
 .btn{display:inline-block;background:#087e91;color:white;padding:12px 20px;border-radius:8px;text-decoration:none;margin-top:10px}
+
+.berita-card{background:white;border-radius:12px;padding:18px;margin:18px 0;box-shadow:0 2px 8px #00000012;overflow:hidden}
+.berita-card h3{color:#075e70;margin:10px 0}
+.berita-foto{width:100%;max-height:420px;object-fit:cover;border-radius:9px;margin-bottom:12px}
+.berita-meta{font-size:12px;color:#607d8b;margin-bottom:10px}
+.berita-isi{font-size:15px;line-height:1.8;white-space:pre-line;overflow-wrap:anywhere}
+.status-berita{color:#607d8b;text-align:center;padding:20px}
+.judul-berita{color:#075e70;margin:0 0 8px}
 </style>
 </head>
+
 <body>
 
 <header>
@@ -34,6 +44,7 @@ footer{background:#064653;color:white;text-align:center;padding:25px;margin-top:
 <a href="#profil">Profil</a>
 <a href="#program">Program</a>
 <a href="#kegiatan">Kegiatan</a>
+<a href="#berita">Berita</a>
 <a href="#pendaftaran">Pendaftaran</a>
 <a href="#kontak">Kontak</a>
 </nav>
@@ -64,7 +75,15 @@ footer{background:#064653;color:white;text-align:center;padding:25px;margin-top:
 
 <section class="card" id="kegiatan">
 <h3>Kegiatan Ma’had</h3>
-<p>Informasi kegiatan, dokumentasi santri, prestasi, dan perkembangan pendidikan akan ditampilkan melalui halaman ini.</p>
+<p>Informasi kegiatan, dokumentasi santri, prestasi, dan perkembangan pendidikan Ma’had dapat dibaca melalui berita dan artikel terbaru di bawah ini.</p>
+</section>
+
+<section id="berita">
+<h2 class="judul-berita">Berita & Artikel Ma’had</h2>
+<p>Informasi terbaru seputar kegiatan, pendidikan, prestasi, dan perkembangan Ma’had Imam Ath-Thabari.</p>
+<div id="daftar-berita">
+<p class="status-berita">Sedang memuat berita dan artikel...</p>
+</div>
 </section>
 
 <section class="card" id="pendaftaran">
@@ -86,6 +105,85 @@ footer{background:#064653;color:white;text-align:center;padding:25px;margin-top:
 <p>© 2026 Ma’had Imam Ath-Thabari</p>
 <p>Yayasan Imam Ath-Thabari Indonesia</p>
 </footer>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbzs4qfTqb01gJN0572kdagjI7ehtxyN6VprPgfJTVD2MFzsXV5jvxCfdcjlRhp_Xje1mw/exec?page=data";
+
+window.tampilkanKontenPublik = function(data) {
+  const wadah = document.getElementById("daftar-berita");
+  wadah.textContent = "";
+
+  if (!Array.isArray(data) || data.length === 0) {
+    const pesan = document.createElement("p");
+    pesan.className = "status-berita";
+    pesan.textContent = "Belum ada berita atau artikel yang diterbitkan.";
+    wadah.appendChild(pesan);
+    return;
+  }
+
+  data.forEach(function(item) {
+    const kartu = document.createElement("article");
+    kartu.className = "berita-card";
+
+    if (item.foto) {
+      try {
+        const alamatFoto = new URL(item.foto);
+        if (alamatFoto.protocol === "https:") {
+          const gambar = document.createElement("img");
+          gambar.className = "berita-foto";
+          gambar.src = alamatFoto.href;
+          gambar.alt = item.judul || "Foto kegiatan Ma’had";
+          gambar.loading = "lazy";
+          kartu.appendChild(gambar);
+        }
+      } catch (e) {
+        // Lewati foto jika alamatnya tidak valid.
+      }
+    }
+
+    const judul = document.createElement("h3");
+    judul.textContent = item.judul || "Tanpa judul";
+    kartu.appendChild(judul);
+
+    const meta = document.createElement("div");
+    meta.className = "berita-meta";
+
+    let tanggalTampil = "";
+    if (item.tanggal) {
+      const tanggal = new Date(item.tanggal);
+      if (!isNaN(tanggal.getTime())) {
+        tanggalTampil = tanggal.toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "long",
+          year: "numeric"
+        });
+      }
+    }
+
+    meta.textContent = [item.kategori, tanggalTampil]
+      .filter(Boolean)
+      .join(" • ");
+    kartu.appendChild(meta);
+
+    const isi = document.createElement("div");
+    isi.className = "berita-isi";
+    isi.textContent = item.isi || "";
+    kartu.appendChild(isi);
+
+    wadah.appendChild(kartu);
+  });
+};
+
+const pemuatBerita = document.createElement("script");
+pemuatBerita.src = API_URL + "&callback=tampilkanKontenPublik";
+
+pemuatBerita.onerror = function() {
+  const wadah = document.getElementById("daftar-berita");
+  wadah.textContent = "Berita belum dapat dimuat. Silakan coba beberapa saat lagi.";
+};
+
+document.body.appendChild(pemuatBerita);
+</script>
 
 </body>
 </html>
