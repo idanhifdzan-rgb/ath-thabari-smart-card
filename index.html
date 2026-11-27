@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -8,87 +9,228 @@
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
+* {
+  box-sizing: border-box;
+}
+
 body {
-  font-family: Arial;
+  font-family: Arial, sans-serif;
   background: #eaf3f7;
   margin: 0;
   padding: 15px;
 }
+
 .card {
   background: white;
   padding: 20px;
   border-radius: 15px;
   max-width: 450px;
   margin: auto;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.08);
 }
+
 h2 {
   color: #0876a8;
   text-align: center;
 }
+
 input, button {
   width: 100%;
   padding: 13px;
   margin: 7px 0;
-  box-sizing: border-box;
   border-radius: 8px;
   font-size: 16px;
 }
+
 input {
   border: 1px solid #ccc;
 }
+
 button {
   background: #0876a8;
   color: white;
   border: none;
   font-weight: bold;
+  cursor: pointer;
 }
+
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.menu {
+  display: flex;
+  gap: 8px;
+  margin-top: 15px;
+}
+
+.menu button {
+  flex: 1;
+  font-size: 14px;
+  padding: 12px 5px;
+}
+
+.menu .aktif {
+  background: #075477;
+  outline: 3px solid #b8e3f4;
+}
+
 #hasil {
   margin-top: 15px;
   padding: 12px;
   background: #f0f7fa;
   border-radius: 8px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
 }
+
 #saldo {
   font-size: 25px;
   color: green;
   font-weight: bold;
 }
+
+.form-transaksi {
+  margin-top: 15px;
+  padding: 15px;
+  background: #f8fbfc;
+  border: 1px solid #dceaf0;
+  border-radius: 10px;
+}
+
+.form-transaksi h3 {
+  color: #0876a8;
+  margin-top: 0;
+}
+
+.keterangan {
+  font-size: 13px;
+  color: #666;
+}
+
+.sembunyi {
+  display: none;
+}
 </style>
 </head>
 
 <body>
+
 <div class="card">
 
 <h2>ATH-THABARI<br>SMART CARD</h2>
-<p style="text-align:center">SISTEM KEUANGAN SANTRI</p>
+<p style="text-align:center">
+SISTEM KEUANGAN SANTRI
+</p>
 
 <label>PIN PETUGAS</label>
-<input type="password" id="pin" placeholder="Masukkan PIN petugas">
+<input
+  type="password"
+  id="pin"
+  placeholder="Masukkan PIN petugas"
+>
 
+<label>Nama Petugas</label>
+<input
+  type="text"
+  id="petugas"
+  placeholder="Nama petugas"
+>
+
+<h3>SCAN QR SANTRI</h3>
 <div id="reader"></div>
 
 <div id="hasil">
   Arahkan QR santri ke kamera.
 </div>
 
-<div id="transaksi" style="display:none">
+<div id="menuTransaksi" class="sembunyi">
 
-  <h3>TRANSAKSI KANTIN</h3>
+  <div class="menu">
+    <button
+      id="btnBelanja"
+      class="aktif"
+      onclick="pilihMenu('belanja')"
+    >
+      BELANJA
+    </button>
 
-  <label>Nama Barang</label>
-  <input id="barang" placeholder="Contoh: Nasi goreng">
+    <button
+      id="btnSetor"
+      onclick="pilihMenu('setor')"
+    >
+      SETOR SALDO
+    </button>
+  </div>
 
-  <label>Nominal Belanja</label>
-  <input id="nominal" type="number" placeholder="Contoh: 5000">
+  <!-- FORM BELANJA -->
 
-  <label>Nama Petugas</label>
-  <input id="petugas" placeholder="Nama petugas">
+  <div id="formBelanja" class="form-transaksi">
 
-  <button onclick="bayar()">PROSES PEMBAYARAN</button>
+    <h3>TRANSAKSI BELANJA</h3>
+
+    <label>Nama Barang</label>
+    <input
+      id="barang"
+      placeholder="Contoh: Nasi goreng"
+    >
+
+    <label>Nominal Belanja</label>
+    <input
+      id="nominalBelanja"
+      type="number"
+      min="1"
+      step="1"
+      placeholder="Contoh: 5000"
+    >
+
+    <button id="btnBayar" onclick="bayar()">
+      PROSES PEMBAYARAN
+    </button>
+
+  </div>
+
+  <!-- FORM SETOR SALDO -->
+
+  <div
+    id="formSetor"
+    class="form-transaksi sembunyi"
+  >
+
+    <h3>SETOR SALDO SANTRI</h3>
+
+    <label>Nominal Setoran</label>
+    <input
+      id="nominalSetor"
+      type="number"
+      min="1"
+      step="1"
+      placeholder="Contoh: 1000"
+    >
+
+    <p class="keterangan">
+      Tidak ada batas minimal setoran. Santri dapat
+      menyetor sesuai kemampuan.
+    </p>
+
+    <label>Keterangan (opsional)</label>
+    <input
+      id="keterangan"
+      placeholder="Contoh: Setoran dari orang tua"
+    >
+
+    <button id="btnSetorSaldo" onclick="setor()">
+      PROSES SETOR SALDO
+    </button>
+
+  </div>
 
 </div>
 
-<button onclick="resetScan()">PINDAI SANTRI BERIKUTNYA</button>
+<button onclick="resetScan()">
+  PINDAI SANTRI BERIKUTNYA
+</button>
 
 </div>
 
@@ -99,10 +241,50 @@ const API_URL =
 
 let santri = null;
 let sedangProses = false;
+let transaksiBerjalan = false;
 
 function rupiah(angka) {
   return "Rp " + Number(angka).toLocaleString("id-ID");
 }
+
+function aman(teks) {
+  return String(teks ?? "").replace(/[&<>"']/g, function(huruf) {
+    return {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
+    }[huruf];
+  });
+}
+
+// ===================================
+// MEMILIH MENU
+// ===================================
+
+function pilihMenu(menu) {
+
+  document.getElementById("formBelanja").classList.toggle(
+    "sembunyi", menu !== "belanja"
+  );
+
+  document.getElementById("formSetor").classList.toggle(
+    "sembunyi", menu !== "setor"
+  );
+
+  document.getElementById("btnBelanja").classList.toggle(
+    "aktif", menu === "belanja"
+  );
+
+  document.getElementById("btnSetor").classList.toggle(
+    "aktif", menu === "setor"
+  );
+}
+
+// ===================================
+// MENCARI SANTRI
+// ===================================
 
 async function cariSantri(kodeQR) {
 
@@ -115,6 +297,7 @@ async function cariSantri(kodeQR) {
   if (!pin) {
     document.getElementById("hasil").innerHTML =
       "Masukkan PIN petugas terlebih dahulu.";
+
     sedangProses = false;
     return;
   }
@@ -146,45 +329,57 @@ async function cariSantri(kodeQR) {
 
     document.getElementById("hasil").innerHTML = `
       <h3>DATA SANTRI</h3>
-      NIS: ${santri.nis}<br>
-      Nama: ${santri.nama}<br>
-      Kelas: ${santri.kelas}<br><br>
-      SALDO:<br>
+      NIS: ${aman(santri.nis)}<br>
+      Nama: ${aman(santri.nama)}<br>
+      Kelas: ${aman(santri.kelas)}<br><br>
+      SALDO SAAT INI:<br>
       <span id="saldo">${rupiah(santri.saldo)}</span>
     `;
 
-    document.getElementById("transaksi").style.display = "block";
+    document.getElementById("menuTransaksi")
+      .classList.remove("sembunyi");
+
+    pilihMenu("belanja");
 
   } catch (error) {
 
     document.getElementById("hasil").innerHTML =
-      "Gagal: " + error.message;
+      "Gagal: " + aman(error.message);
 
     sedangProses = false;
   }
 }
 
+// ===================================
+// BELANJA SANTRI
+// ===================================
+
 async function bayar() {
 
-  if (!santri) return;
+  if (!santri || transaksiBerjalan) return;
 
   const pin = document.getElementById("pin").value;
-  const barang = document.getElementById("barang").value;
-  const nominal = Number(document.getElementById("nominal").value);
-  const petugas = document.getElementById("petugas").value;
+  const barang = document.getElementById("barang").value.trim();
+  const nominal = Number(
+    document.getElementById("nominalBelanja").value
+  );
+  const petugas = document.getElementById("petugas").value.trim();
 
-  if (!barang || !nominal || !petugas) {
-    alert("Lengkapi semua data transaksi.");
+  if (!barang || !petugas || !Number.isFinite(nominal) || nominal <= 0) {
+    alert("Lengkapi data belanja dengan benar.");
     return;
   }
 
-  if (nominal <= 0 || nominal > santri.saldo) {
-    alert("Nominal tidak valid atau saldo tidak cukup.");
+  if (nominal > santri.saldo) {
+    alert("Saldo tidak mencukupi.");
     return;
   }
 
-  document.getElementById("hasil").innerHTML =
-    "Sedang memproses pembayaran...";
+  transaksiBerjalan = true;
+
+  const tombol = document.getElementById("btnBayar");
+  tombol.disabled = true;
+  tombol.innerText = "SEDANG MEMPROSES...";
 
   try {
 
@@ -213,32 +408,133 @@ async function bayar() {
 
     document.getElementById("hasil").innerHTML = `
       <h3>PEMBAYARAN BERHASIL</h3>
-      Nama: ${hasil.data.nama}<br>
+      Nama: ${aman(hasil.data.nama)}<br>
       Sisa saldo:<br>
       <span id="saldo">${rupiah(hasil.data.saldo)}</span>
     `;
 
     document.getElementById("barang").value = "";
-    document.getElementById("nominal").value = "";
+    document.getElementById("nominalBelanja").value = "";
 
   } catch (error) {
 
     document.getElementById("hasil").innerHTML =
-      "Transaksi gagal: " + error.message;
+      "Transaksi gagal: " + aman(error.message);
+
+  } finally {
+
+    transaksiBerjalan = false;
+    tombol.disabled = false;
+    tombol.innerText = "PROSES PEMBAYARAN";
   }
 }
 
+// ===================================
+// SETOR SALDO SANTRI
+// ===================================
+
+async function setor() {
+
+  if (!santri || transaksiBerjalan) return;
+
+  const pin = document.getElementById("pin").value;
+  const nominal = Number(
+    document.getElementById("nominalSetor").value
+  );
+  const petugas = document.getElementById("petugas").value.trim();
+  const keterangan = document.getElementById("keterangan").value.trim();
+
+  if (!petugas || !Number.isFinite(nominal) || nominal <= 0) {
+    alert("Masukkan nama petugas dan nominal setoran yang benar.");
+    return;
+  }
+
+  transaksiBerjalan = true;
+
+  const tombol = document.getElementById("btnSetorSaldo");
+  tombol.disabled = true;
+  tombol.innerText = "SEDANG MEMPROSES...";
+
+  try {
+
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "setorSaldo",
+        nis: santri.nis,
+        nominal: nominal,
+        petugas: petugas,
+        keterangan: keterangan,
+        pin: pin
+      })
+    });
+
+    const hasil = await response.json();
+
+    if (!hasil.berhasil) {
+      throw new Error(hasil.pesan);
+    }
+
+    santri.saldo = hasil.data.saldo;
+
+    document.getElementById("hasil").innerHTML = `
+      <h3>SETORAN BERHASIL</h3>
+      Nama: ${aman(hasil.data.nama)}<br>
+      Jumlah setoran: ${rupiah(nominal)}<br>
+      Saldo terbaru:<br>
+      <span id="saldo">${rupiah(hasil.data.saldo)}</span>
+    `;
+
+    document.getElementById("nominalSetor").value = "";
+    document.getElementById("keterangan").value = "";
+
+  } catch (error) {
+
+    document.getElementById("hasil").innerHTML =
+      "Setoran gagal: " + aman(error.message);
+
+  } finally {
+
+    transaksiBerjalan = false;
+    tombol.disabled = false;
+    tombol.innerText = "PROSES SETOR SALDO";
+  }
+}
+
+// ===================================
+// RESET UNTUK SANTRI BERIKUTNYA
+// ===================================
+
 function resetScan() {
+
+  if (transaksiBerjalan) {
+    alert("Tunggu transaksi selesai terlebih dahulu.");
+    return;
+  }
+
   santri = null;
   sedangProses = false;
 
   document.getElementById("hasil").innerHTML =
     "Silakan pindai QR santri berikutnya.";
 
-  document.getElementById("transaksi").style.display = "none";
+  document.getElementById("menuTransaksi")
+    .classList.add("sembunyi");
+
   document.getElementById("barang").value = "";
-  document.getElementById("nominal").value = "";
+  document.getElementById("nominalBelanja").value = "";
+  document.getElementById("nominalSetor").value = "";
+  document.getElementById("keterangan").value = "";
+
+  pilihMenu("belanja");
 }
+
+// ===================================
+// PEMINDAI QR
+// ===================================
 
 const scanner = new Html5QrcodeScanner(
   "reader",
@@ -254,5 +550,6 @@ scanner.render((kodeQR) => {
 });
 
 </script>
+
 </body>
 </html>
